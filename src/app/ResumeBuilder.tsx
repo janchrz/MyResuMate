@@ -140,14 +140,11 @@ export default function Component() {
         if (section === 'skills') {
           (newFormData[section] as string[])[index as number] = value as string
         } else if (field === 'links' && subIndex !== null && subField !== null) {
-          const projectLinks = (newFormData[section] as Project[])[index as number][field] as ProjectLink[]
+          const projectLinks = ((newFormData[section] as Project[])[index as number][field] as ProjectLink[])
           projectLinks[subIndex][subField] = value as string
         } else if (field !== null && index !== null) {
           const sectionArray = newFormData[section] as Array<Experience | Education | Project | Certification>
-          sectionArray[index] = {
-            ...sectionArray[index],
-            [field]: value
-          }
+          ;(sectionArray[index] as Record<string, string | boolean>)[field] = value
         }
       } else if (field === null) {
         (newFormData[section] as string) = value as string
@@ -177,7 +174,7 @@ export default function Component() {
       })();
 
       if (newItem !== null) {
-        (newFormData[section] as any[]) = [...(prevData[section] as any[]), newItem];
+        (newFormData[section] as Array<unknown>) = [...(prevData[section] as Array<unknown>), newItem];
       }
 
       return newFormData;
@@ -188,9 +185,9 @@ export default function Component() {
     setFormData(prevData => {
       const newFormData = { ...prevData }
       if (subIndex !== null && section === 'projects') {
-        (newFormData[section] as Project[])[index].links.splice(subIndex, 1)
+        ((newFormData[section] as Project[])[index].links).splice(subIndex, 1)
       } else {
-        (newFormData[section] as Array<Experience | Education | Project | Certification | string>).splice(index, 1)
+        (newFormData[section] as Array<unknown>).splice(index, 1)
       }
       return newFormData
     })
@@ -198,15 +195,15 @@ export default function Component() {
 
   const addProjectLink = (projectIndex: number) => {
     setFormData(prevData => {
-      const newFormData = { ...prevData };
-      const updatedProjects = [...newFormData.projects];
+      const newFormData = { ...prevData }
+      const updatedProjects = [...newFormData.projects]
       updatedProjects[projectIndex] = {
         ...updatedProjects[projectIndex],
         links: [...updatedProjects[projectIndex].links, { url: '', name: '' }]
-      };
-      return { ...newFormData, projects: updatedProjects };
-    });
-  };
+      }
+      return { ...newFormData, projects: updatedProjects }
+    })
+  }
 
   const handleDownload = async () => {
     setIsDownloading(true)
@@ -380,12 +377,10 @@ export default function Component() {
           }
         })
       })
-    
     }
 
     if (yPosition > pageHeight - margin) {
       doc.addPage()
-      
       yPosition = margin
     }
 
@@ -598,7 +593,7 @@ export default function Component() {
                                     value={formData[field as keyof FormData] as string}
                                     onChange={(e) => handleInputChange(field as keyof FormData, null, null, e.target.value)}
                                     placeholder={field === 'fullName' ? 'Your Name' : `Enter your ${field.toLowerCase().replace('_', ' ')}`}
-                                    className={cn("w-full rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
+                                    className="w-full rounded-xl transition-all duration-300 hover:shadow-md bg-white border-gray-300 text-gray-900 placeholder-gray-500"
                                   />
                                 </motion.div>
                               ))}
@@ -613,7 +608,7 @@ export default function Component() {
                                   value={formData.summary}
                                   onChange={(e) => handleInputChange('summary', null, null, e.target.value)}
                                   placeholder="A brief summary of your professional background and skills"
-                                  className={cn("w-full h-24 sm:h-32 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
+                                  className="w-full h-24 sm:h-32 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:outline-none"
                                 />
                               </motion.div>
                             </div>
@@ -649,7 +644,7 @@ export default function Component() {
                                         onChange={(e) => handleInputChange('experience', index, field, e.target.value)}
                                         placeholder={`Enter ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`}
                                         type={field.includes('Date') ? 'date' : 'text'}
-                                        className={cn("w-full rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
+                                        className="w-full rounded-xl transition-all duration-300 hover:shadow-md bg-white border-gray-300 text-gray-900 placeholder-gray-500"
                                       />
                                     </div>
                                   ))}
@@ -660,7 +655,7 @@ export default function Component() {
                                       value={exp.description}
                                       onChange={(e) => handleInputChange('experience', index, 'description', e.target.value)}
                                       placeholder="Describe your responsibilities and achievements"
-                                      className={cn("w-full h-24 sm:h-32 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
+                                      className="w-full h-24 sm:h-32 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:outline-none"
                                     />
                                   </div>
                                   <div className="flex items-center">
@@ -689,10 +684,10 @@ export default function Component() {
                           </TabsContent>
                           <TabsContent value="education">
                             {formData.education.map((edu, index) => (
-                                                            <motion.div
+                              <motion.div
                                 key={index}
                                 className="mb-4 sm:mb-6 p-4 sm:p-6 bg-gray-50 rounded-xl relative"
-                                                                initial={{ opacity: 0, y: 20 }}
+                                initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 * index }}
                               >
@@ -718,7 +713,7 @@ export default function Component() {
                                         onChange={(e) => handleInputChange('education', index, field, e.target.value)}
                                         placeholder={`Enter ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`}
                                         type={field.includes('Date') ? 'date' : 'text'}
-                                        className={cn("w-full rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
+                                        className="w-full rounded-xl transition-all duration-300 hover:shadow-md bg-white border-gray-300 text-gray-900 placeholder-gray-500"
                                       />
                                     </div>
                                   ))}
@@ -759,7 +754,7 @@ export default function Component() {
                                   value={skill}
                                   onChange={(e) => handleInputChange('skills', index, null, e.target.value)}
                                   placeholder="Enter a skill"
-                                  className={cn("w-full pr-10 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
+                                  className="w-full pr-10 rounded-xl transition-all duration-300 hover:shadow-md bg-white border-gray-300 text-gray-900 placeholder-gray-500"
                                 />
                                 <Button
                                   type="button"
@@ -809,7 +804,7 @@ export default function Component() {
                                       value={project.name}
                                       onChange={(e) => handleInputChange('projects', index, 'name', e.target.value)}
                                       placeholder="Enter project name"
-                                      className={cn("w-full rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
+                                      className="w-full rounded-xl transition-all duration-300 hover:shadow-md bg-white border-gray-300 text-gray-900 placeholder-gray-500"
                                     />
                                   </div>
                                   <div>
@@ -819,7 +814,7 @@ export default function Component() {
                                       value={project.description}
                                       onChange={(e) => handleInputChange('projects', index, 'description', e.target.value)}
                                       placeholder="Describe your project"
-                                      className={cn("w-full h-24 sm:h-32 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
+                                      className="w-full h-24 sm:h-32 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:outline-none"
                                     />
                                   </div>
                                   <div>
@@ -830,13 +825,13 @@ export default function Component() {
                                           value={link.name}
                                           onChange={(e) => handleInputChange('projects', index, 'links', e.target.value, linkIndex, 'name')}
                                           placeholder="Link name"
-                                          className={cn("w-1/3 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
+                                          className="w-1/3 rounded-xl transition-all duration-300 hover:shadow-md bg-white border-gray-300 text-gray-900 placeholder-gray-500"
                                         />
                                         <Input
                                           value={link.url}
                                           onChange={(e) => handleInputChange('projects', index, 'links', e.target.value, linkIndex, 'url')}
                                           placeholder="Link URL"
-                                          className={cn("w-2/3 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
+                                          className="w-2/3 rounded-xl transition-all duration-300 hover:shadow-md bg-white border-gray-300 text-gray-900 placeholder-gray-500"
                                         />
                                         <Button
                                           type="button"
@@ -891,7 +886,7 @@ export default function Component() {
                                   <span className="sr-only">Remove certification</span>
                                 </Button>
                                 <div className="space-y-3 sm:space-y-4">
-                                  {['name', 'issuer', 'startDate', 'endDate'].map((field) => (
+                                  {['name', 'issuer', 'startDate', 'endDate'].map((field)=> (
                                     <div key={field}>
                                       <Label htmlFor={`certification-${index}-${field}`} className="text-sm font-medium text-gray-700 mb-1 block">
                                         {field === 'startDate' ? 'Start Date' : field === 'endDate' ? 'End Date' : field.charAt(0).toUpperCase() + field.slice(1)}
@@ -902,7 +897,7 @@ export default function Component() {
                                         onChange={(e) => handleInputChange('certifications', index, field, e.target.value)}
                                         placeholder={`Enter ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`}
                                         type={field.includes('Date') ? 'date' : 'text'}
-                                        className={cn("w-full rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
+                                        className="w-full rounded-xl transition-all duration-300 hover:shadow-md bg-white border-gray-300 text-gray-900 placeholder-gray-500"
                                       />
                                     </div>
                                   ))}
@@ -913,7 +908,7 @@ export default function Component() {
                                       value={cert.description}
                                       onChange={(e) => handleInputChange('certifications', index, 'description', e.target.value)}
                                       placeholder="Describe your certification"
-                                      className={cn("w-full h-24 sm:h-32 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
+                                      className="w-full h-24 sm:h-32 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:outline-none"
                                     />
                                   </div>
                                 </div>
@@ -975,7 +970,7 @@ export default function Component() {
                         ) : (
                           <>
                             <Download className="mr-2 h-4 w-4" />
-                            Download Resume
+                            Download PDF
                           </>
                         )}
                       </motion.div>

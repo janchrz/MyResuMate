@@ -78,9 +78,11 @@ body {
 }
 
 @layer base {
-  * {
-    @apply border-border;
+  input:focus {
+    outline: none;
+    box-shadow: none;
   }
+
   body {
     @apply bg-background text-foreground;
   }
