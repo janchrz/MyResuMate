@@ -1,67 +1,93 @@
 'use client'
 
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { jsPDF } from "jspdf"
-import "jspdf/dist/polyfills.es.js"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { Trash2, Plus, Download, Eye, Github, Linkedin, Facebook, Instagram, Briefcase, GraduationCap, Wrench, Folder, Award, Check, Loader2, Twitter } from 'lucide-react'
+import { Trash2, Plus, Download, Eye, Github, Linkedin, Facebook, Instagram, Briefcase, GraduationCap, Wrench, Folder, Award, Check, Loader2 } from 'lucide-react'
 import { cn } from "@/lib/utils"
 import { toast } from "@/components/ui/use-toast"
 import { motion, AnimatePresence } from "framer-motion"
 
+// Define types for form data
+type ProjectLink = {
+  url: string
+  name: string
+}
+
+type Project = {
+  name: string
+  description: string
+  links: ProjectLink[]
+}
+
+type Experience = {
+  title: string
+  company: string
+  startDate: string
+  endDate: string
+  description: string
+  currentlyWorking: boolean
+}
+
+type Education = {
+  degree: string
+  institution: string
+  startDate: string
+  endDate: string
+  currentlyStudying: boolean
+}
+
+type Certification = {
+  name: string
+  issuer: string
+  startDate: string
+  endDate: string
+  description: string
+}
+
+type FormData = {
+  fullName: string
+  email: string
+  phone: string
+  location: string
+  summary: string
+  experience: Experience[]
+  education: Education[]
+  skills: string[]
+  projects: Project[]
+  certifications: Certification[]
+}
+
 const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
-  return isMobile;
-};
+  return isMobile
+}
 
-const removeFocusBorderClass = `
-  .remove-focus-border:focus {
-    outline: none;
-    box-shadow: none;
-  }
-  .hide-scrollbar {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  .hide-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  * {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  *::-webkit-scrollbar {
-    display: none;
-  }
-`;
+const formatDate = (dateString: string) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return date.toLocaleString('default', { month: 'long', year: 'numeric' })
+}
 
-const removeFocusBorder = "remove-focus-border"
-
-const formatDate = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  return date.toLocaleString('default', { month: 'long', year: 'numeric' });
-};
-
-export default function ResumeBuilder() {
+export default function Component() {
   const [activeTab, setActiveTab] = useState('personal')
   const [tabBounds, setTabBounds] = useState({ left: 0, width: 0 })
   const tabsRef = useRef<(HTMLButtonElement | null)[]>([])
   const tabsListRef = useRef<HTMLDivElement>(null)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     fullName: '',
     email: '',
     phone: '',
@@ -77,16 +103,16 @@ export default function ResumeBuilder() {
   const [isDownloading, setIsDownloading] = useState(false)
   const [downloadComplete, setDownloadComplete] = useState(false)
 
-  const tabs = [
+  const tabs = useMemo(() => [
     { value: 'personal', icon: <Eye className="w-4 h-4" />, label: 'Personal' },
     { value: 'experience', icon: <Briefcase className="w-4 h-4" />, label: 'Experience' },
     { value: 'education', icon: <GraduationCap className="w-4 h-4" />, label: 'Education' },
     { value: 'skills', icon: <Wrench className="w-4 h-4" />, label: 'Skills' },
     { value: 'projects', icon: <Folder className="w-4 h-4" />, label: 'Projects' },
     { value: 'certifications', icon: <Award className="w-4 h-4" />, label: 'Certifications' },
-  ]
+  ], [])
 
-  const isMobile = useIsMobile();
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     const activeTabElement = tabsRef.current[tabs.findIndex(tab => tab.value === activeTab)]
@@ -98,100 +124,89 @@ export default function ResumeBuilder() {
         width: isMobile ? tabsList.offsetWidth : offsetWidth 
       })
     }
-  }, [activeTab, isMobile])
+  }, [activeTab, isMobile, tabs])
 
-  useEffect(() => {
-    const tabsList = tabsListRef.current;
-    if (tabsList) {
-      let isDown = false;
-      let startX: number;
-      let scrollLeft: number;
-
-      const onMouseDown = (e: MouseEvent) => {
-        isDown = true;
-        startX = e.pageX - tabsList.offsetLeft;
-        scrollLeft = tabsList.scrollLeft;
-      };
-
-      const onMouseLeave = () => {
-        isDown = false;
-      };
-
-      const onMouseUp = () => {
-        isDown = false;
-      };
-
-      const onMouseMove = (e: MouseEvent) => {
-        if (!isDown) return;
-        e.preventDefault();
-        const x = e.pageX - tabsList.offsetLeft;
-        const walk = (x - startX) * 2;
-        tabsList.scrollLeft = scrollLeft - walk;
-      };
-
-      tabsList.addEventListener('mousedown', onMouseDown);
-      tabsList.addEventListener('mouseleave', onMouseLeave);
-      tabsList.addEventListener('mouseup', onMouseUp);
-      tabsList.addEventListener('mousemove', onMouseMove);
-
-      return () => {
-        tabsList.removeEventListener('mousedown', onMouseDown);
-        tabsList.removeEventListener('mouseleave', onMouseLeave);
-        tabsList.removeEventListener('mouseup', onMouseUp);
-        tabsList.removeEventListener('mousemove', onMouseMove);
-      };
-    }
-  }, []);
-
-  const handleInputChange = (section, index, field, value, subIndex = null, subField = null) => {
+  const handleInputChange = (
+    section: keyof FormData,
+    index: number | null,
+    field: string | null,
+    value: string | boolean,
+    subIndex: number | null = null,
+    subField: keyof ProjectLink | null = null
+  ) => {
     setFormData(prevData => {
-      const newFormData = { ...prevData };
+      const newFormData = { ...prevData }
       if (Array.isArray(newFormData[section])) {
         if (section === 'skills') {
-          newFormData[section][index] = value;
-        } else if (field === 'links') {
-          newFormData[section][index][field][subIndex][subField] = value;
-        } else {
-          newFormData[section][index][field] = value;
+          (newFormData[section] as string[])[index as number] = value as string
+        } else if (field === 'links' && subIndex !== null && subField !== null) {
+          const projectLinks = (newFormData[section] as Project[])[index as number][field] as ProjectLink[]
+          projectLinks[subIndex][subField] = value as string
+        } else if (field !== null && index !== null) {
+          const sectionArray = newFormData[section] as Array<Experience | Education | Project | Certification>
+          sectionArray[index] = {
+            ...sectionArray[index],
+            [field]: value
+          }
         }
-      } else {
-        newFormData[section] = value;
+      } else if (field === null) {
+        (newFormData[section] as string) = value as string
       }
+      return newFormData
+    })
+  }
+
+  const addListItem = (section: keyof FormData) => {
+    setFormData(prevData => {
+      const newFormData = { ...prevData };
+      const newItem = (() => {
+        switch (section) {
+          case 'experience':
+            return { title: '', company: '', startDate: '', endDate: '', description: '', currentlyWorking: false };
+          case 'education':
+            return { degree: '', institution: '', startDate: '', endDate: '', currentlyStudying: false };
+          case 'skills':
+            return '';
+          case 'projects':
+            return { name: '', description: '', links: [] };
+          case 'certifications':
+            return { name: '', issuer: '', startDate: '', endDate: '', description: '' };
+          default:
+            return null;
+        }
+      })();
+
+      if (newItem !== null) {
+        (newFormData[section] as any[]) = [...(prevData[section] as any[]), newItem];
+      }
+
       return newFormData;
     });
   };
 
-  const addListItem = (section) => {
-    const newFormData = { ...formData }
-    if (section === 'experience') {
-      newFormData[section].push({ title: '', company: '', startDate: '', endDate: '', description: '', currentlyWorking: false })
-    } else if (section === 'education') {
-      newFormData[section].push({ degree: '', institution: '', startDate: '', endDate: '', currentlyStudying: false })
-    } else if (section === 'skills') {
-      newFormData[section].push('')
-    } else if (section === 'projects') {
-      newFormData[section].push({ name: '', description: '', links: [{ url: '', name: '' }] })
-    } else if (section === 'certifications') {
-      newFormData[section].push({ name: '', issuer: '', startDate: '', endDate: '', description: '' })
-    }
-    setFormData(newFormData)
+  const removeListItem = (section: keyof FormData, index: number, subIndex: number | null = null) => {
+    setFormData(prevData => {
+      const newFormData = { ...prevData }
+      if (subIndex !== null && section === 'projects') {
+        (newFormData[section] as Project[])[index].links.splice(subIndex, 1)
+      } else {
+        (newFormData[section] as Array<Experience | Education | Project | Certification | string>).splice(index, 1)
+      }
+      return newFormData
+    })
   }
 
-  const removeListItem = (section, index, subIndex = null) => {
-    const newFormData = { ...formData }
-    if (subIndex !== null) {
-      newFormData[section][index].links.splice(subIndex, 1)
-    } else {
-      newFormData[section].splice(index, 1)
-    }
-    setFormData(newFormData)
-  }
-
-  const addProjectLink = (projectIndex) => {
-    const newFormData = { ...formData }
-    newFormData.projects[projectIndex].links.push({ url: '', name: '' })
-    setFormData(newFormData)
-  }
+  const addProjectLink = (projectIndex: number) => {
+    setFormData(prevData => {
+      const newFormData = { ...prevData };
+      const updatedProjects = [...newFormData.projects];
+      updatedProjects[projectIndex] = {
+        ...updatedProjects[projectIndex],
+        links: [...updatedProjects[projectIndex].links, { url: '', name: '' }]
+      };
+      return { ...newFormData, projects: updatedProjects };
+    });
+  };
 
   const handleDownload = async () => {
     setIsDownloading(true)
@@ -201,9 +216,9 @@ export default function ResumeBuilder() {
     await new Promise(resolve => setTimeout(resolve, 2000))
 
     const doc = new jsPDF({
-      unit: 'pt',
-      format: 'a4',
-      lineHeight: 1.2
+      orientation: "portrait",
+      unit: "pt",
+      format: "a4",
     })
 
     doc.setFont("times", "normal")
@@ -213,7 +228,7 @@ export default function ResumeBuilder() {
     const margin = 40
     let yPosition = margin
 
-    const addSection = (title, contentFunc) => {
+    const addSection = (title: string, contentFunc: () => void) => {
       doc.setFont("times", "bold")
       doc.setFontSize(14)
       doc.setTextColor(0, 0, 0)
@@ -344,21 +359,20 @@ export default function ResumeBuilder() {
         formData.certifications.forEach((cert) => {
           if (cert.name || cert.issuer) {
             doc.setFont("times", "bold")
-            
             doc.setFontSize(12)
             doc.setTextColor(0, 0, 0)
             doc.text(cert.name, margin, yPosition)
             yPosition += 15
 
             doc.setFont("times", "bold")
-            
             doc.setFontSize(11)
             doc.setTextColor(0, 0, 0)
-            doc.text(`${cert.issuer} |   ${formatDate(cert.startDate)} - ${formatDate(cert.endDate)}`, margin, yPosition)
+            doc.text(`${cert.issuer} | ${formatDate(cert.startDate)} - ${formatDate(cert.endDate)}`, margin, yPosition)
             yPosition += 15
 
             doc.setFont("times", "normal")
             doc.setFontSize(11)
+            
             doc.setTextColor(0, 0, 0)
             const descLines = doc.splitTextToSize(cert.description, pageWidth - 2 * margin)
             doc.text(descLines, margin, yPosition)
@@ -366,10 +380,12 @@ export default function ResumeBuilder() {
           }
         })
       })
+    
     }
 
     if (yPosition > pageHeight - margin) {
       doc.addPage()
+      
       yPosition = margin
     }
 
@@ -496,22 +512,21 @@ export default function ResumeBuilder() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      <style>{removeFocusBorderClass}</style>
       <main className="flex-grow py-4 sm:py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-        <motion.div
-  className="text-left mb-8"
-  initial={{ opacity: 0, y: -50 }}
-  animate={{ opacity: 1, y: 0 }}
-  transition={{ duration: 0.8, ease: "easeOut" }}
->
-  <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-    My ResuMate
-  </h1>
-  <p className="text-lg sm:text-xl text-gray-600 max-w-2xl">
-  Build your professional resume in just a few minutes!
-  </p>
-</motion.div>
+          <motion.div
+            className="text-left mb-8"
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+          >
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+              My ResuMate
+            </h1>
+            <p className="text-lg sm:text-xl text-gray-600 max-w-2xl">
+              Build your professional resume in just a few minutes!
+            </p>
+          </motion.div>
           <div className="flex flex-col lg:flex-row gap-6 sm:gap-8">
             <motion.div
               className="w-full lg:w-1/2"
@@ -535,18 +550,16 @@ export default function ResumeBuilder() {
                           stiffness: 400,
                           damping: 30
                         }}
-                        style={{
-                          position: 'absolute',
-                          borderRadius: '9999px',
-                          backgroundColor: 'white',
-                          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-                        }}
                       />
                       {tabs.map((tab, index) => (
                         <TabsTrigger
                           key={tab.value}
                           value={tab.value}
-                          ref={el => tabsRef.current[index] = el}
+                          ref={(el: HTMLButtonElement | null) => {
+                            if (tabsRef.current) {
+                              tabsRef.current[index] = el
+                            }
+                          }}
                           className={cn(
                             "relative z-10 rounded-full px-2 py-2 sm:px-3 sm:py-1.5 text-xs font-medium transition-all duration-200 ease-in-out flex items-center justify-center gap-1 sm:gap-2 flex-1 sm:flex-initial",
                             activeTab === tab.value 
@@ -582,10 +595,10 @@ export default function ResumeBuilder() {
                                   </Label>
                                   <Input
                                     id={field}
-                                    value={formData[field]}
-                                    onChange={(e) => handleInputChange(field, null, null, e.target.value)}
+                                    value={formData[field as keyof FormData] as string}
+                                    onChange={(e) => handleInputChange(field as keyof FormData, null, null, e.target.value)}
                                     placeholder={field === 'fullName' ? 'Your Name' : `Enter your ${field.toLowerCase().replace('_', ' ')}`}
-                                    className={cn("w-full rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", removeFocusBorder)}
+                                    className={cn("w-full rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
                                   />
                                 </motion.div>
                               ))}
@@ -600,7 +613,7 @@ export default function ResumeBuilder() {
                                   value={formData.summary}
                                   onChange={(e) => handleInputChange('summary', null, null, e.target.value)}
                                   placeholder="A brief summary of your professional background and skills"
-                                  className={cn("w-full h-24 sm:h-32 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", removeFocusBorder)}
+                                  className={cn("w-full h-24 sm:h-32 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
                                 />
                               </motion.div>
                             </div>
@@ -625,55 +638,21 @@ export default function ResumeBuilder() {
                                   <span className="sr-only">Remove experience</span>
                                 </Button>
                                 <div className="space-y-3 sm:space-y-4">
-                                  {['title', 'company'].map((field) => (
+                                  {['title', 'company', 'startDate', 'endDate'].map((field) => (
                                     <div key={field}>
                                       <Label htmlFor={`experience-${index}-${field}`} className="text-sm font-medium text-gray-700 mb-1 block">
-                                        {field.charAt(0).toUpperCase() + field.slice(1)}
+                                        {field === 'startDate' ? 'Start Date' : field === 'endDate' ? 'End Date' : field.charAt(0).toUpperCase() + field.slice(1)}
                                       </Label>
                                       <Input
                                         id={`experience-${index}-${field}`}
-                                        value={exp[field]}
+                                        value={exp[field as keyof Experience] as string}
                                         onChange={(e) => handleInputChange('experience', index, field, e.target.value)}
-                                        placeholder={`Enter ${field}`}
-                                        className={cn("w-full rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", removeFocusBorder)}
+                                        placeholder={`Enter ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`}
+                                        type={field.includes('Date') ? 'date' : 'text'}
+                                        className={cn("w-full rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
                                       />
                                     </div>
                                   ))}
-                                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                                    <div className="flex-1">
-                                      <Label htmlFor={`experience-${index}-startDate`} className="text-sm font-medium text-gray-700 mb-1 block">Start Date</Label>
-                                      <Input
-                                        id={`experience-${index}-startDate`}
-                                        type="date"
-                                        value={exp.startDate}
-                                        onChange={(e) => handleInputChange('experience', index, 'startDate', e.target.value)}
-                                        className={cn("w-full rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", removeFocusBorder)}
-                                      />
-                                    </div>
-                                    <div className="flex-1">
-                                      <Label htmlFor={`experience-${index}-endDate`} className="text-sm font-medium text-gray-700 mb-1 block">End Date</Label>
-                                      <Input
-                                        id={`experience-${index}-endDate`}
-                                        type="date"
-                                        value={exp.endDate}
-                                        onChange={(e) => handleInputChange('experience', index, 'endDate', e.target.value)}
-                                        disabled={exp.currentlyWorking}
-                                        className={cn("w-full rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", removeFocusBorder)}
-                                      />
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center">
-                                    <input
-                                      id={`experience-${index}-currentlyWorking`}
-                                      type="checkbox"
-                                      checked={exp.currentlyWorking}
-                                      onChange={(e) => handleInputChange('experience', index, 'currentlyWorking', e.target.checked)}
-                                      className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                                    />
-                                    <Label htmlFor={`experience-${index}-currentlyWorking`} className="ml-2 text-sm text-gray-700">
-                                      I currently work here
-                                    </Label>
-                                  </div>
                                   <div>
                                     <Label htmlFor={`experience-${index}-description`} className="text-sm font-medium text-gray-700 mb-1 block">Description</Label>
                                     <Textarea
@@ -681,8 +660,20 @@ export default function ResumeBuilder() {
                                       value={exp.description}
                                       onChange={(e) => handleInputChange('experience', index, 'description', e.target.value)}
                                       placeholder="Describe your responsibilities and achievements"
-                                      className={cn("w-full h-24 sm:h-32 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", removeFocusBorder)}
+                                      className={cn("w-full h-24 sm:h-32 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
                                     />
+                                  </div>
+                                  <div className="flex items-center">
+                                    <input
+                                      type="checkbox"
+                                      id={`experience-${index}-currentlyWorking`}
+                                      checked={exp.currentlyWorking}
+                                      onChange={(e) => handleInputChange('experience', index, 'currentlyWorking', e.target.checked)}
+                                      className="mr-2 rounded border-gray-300 text-primary focus:ring-primary"
+                                    />
+                                    <Label htmlFor={`experience-${index}-currentlyWorking`} className="text-sm font-medium text-gray-700">
+                                      I currently work here
+                                    </Label>
                                   </div>
                                 </div>
                               </motion.div>
@@ -690,18 +681,18 @@ export default function ResumeBuilder() {
                             <Button
                               type="button"
                               onClick={() => addListItem('experience')}
-                              className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-2 px-4 rounded-xl transition-all duration-300 hover:shadow-md"
+                              className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-primary hover:bg-primary/90 text-white rounded-xl transition-all duration-300 hover:shadow-md"
                             >
-                              <Plus className="w-4 h-4 mr-2" />
+                              <Plus className="h-4 w-4" />
                               Add Experience
                             </Button>
                           </TabsContent>
                           <TabsContent value="education">
                             {formData.education.map((edu, index) => (
-                              <motion.div
+                                                            <motion.div
                                 key={index}
                                 className="mb-4 sm:mb-6 p-4 sm:p-6 bg-gray-50 rounded-xl relative"
-                                initial={{ opacity: 0, y: 20 }}
+                                                                initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 * index }}
                               >
@@ -716,52 +707,30 @@ export default function ResumeBuilder() {
                                   <span className="sr-only">Remove education</span>
                                 </Button>
                                 <div className="space-y-3 sm:space-y-4">
-                                  {['degree', 'institution'].map((field) => (
+                                  {['degree', 'institution', 'startDate', 'endDate'].map((field) => (
                                     <div key={field}>
                                       <Label htmlFor={`education-${index}-${field}`} className="text-sm font-medium text-gray-700 mb-1 block">
-                                        {field.charAt(0).toUpperCase() + field.slice(1)}
+                                        {field === 'startDate' ? 'Start Date' : field === 'endDate' ? 'End Date' : field.charAt(0).toUpperCase() + field.slice(1)}
                                       </Label>
                                       <Input
                                         id={`education-${index}-${field}`}
-                                        value={edu[field]}
+                                        value={edu[field as keyof Education] as string}
                                         onChange={(e) => handleInputChange('education', index, field, e.target.value)}
-                                        placeholder={`Enter ${field}`}
-                                        className={cn("w-full rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", removeFocusBorder)}
+                                        placeholder={`Enter ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`}
+                                        type={field.includes('Date') ? 'date' : 'text'}
+                                        className={cn("w-full rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
                                       />
                                     </div>
                                   ))}
-                                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                                    <div className="flex-1">
-                                      <Label htmlFor={`education-${index}-startDate`} className="text-sm font-medium text-gray-700 mb-1 block">Start Date</Label>
-                                      <Input
-                                        id={`education-${index}-startDate`}
-                                        type="date"
-                                        value={edu.startDate}
-                                        onChange={(e) => handleInputChange('education', index, 'startDate', e.target.value)}
-                                        className={cn("w-full rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", removeFocusBorder)}
-                                      />
-                                    </div>
-                                    <div className="flex-1">
-                                      <Label htmlFor={`education-${index}-endDate`} className="text-sm font-medium text-gray-700 mb-1 block">End Date</Label>
-                                      <Input
-                                        id={`education-${index}-endDate`}
-                                        type="date"
-                                        value={edu.endDate}
-                                        onChange={(e) => handleInputChange('education', index, 'endDate', e.target.value)}
-                                        disabled={edu.currentlyStudying}
-                                        className={cn("w-full rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", removeFocusBorder)}
-                                      />
-                                    </div>
-                                  </div>
                                   <div className="flex items-center">
                                     <input
-                                      id={`education-${index}-currentlyStudying`}
                                       type="checkbox"
+                                      id={`education-${index}-currentlyStudying`}
                                       checked={edu.currentlyStudying}
                                       onChange={(e) => handleInputChange('education', index, 'currentlyStudying', e.target.checked)}
-                                      className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                                      className="mr-2 rounded border-gray-300 text-primary focus:ring-primary"
                                     />
-                                    <Label htmlFor={`education-${index}-currentlyStudying`} className="ml-2 text-sm text-gray-700">
+                                    <Label htmlFor={`education-${index}-currentlyStudying`} className="text-sm font-medium text-gray-700">
                                       I am currently studying here
                                     </Label>
                                   </div>
@@ -771,9 +740,9 @@ export default function ResumeBuilder() {
                             <Button
                               type="button"
                               onClick={() => addListItem('education')}
-                              className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-2 px-4 rounded-xl transition-all duration-300 hover:shadow-md"
+                              className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-primary hover:bg-primary/90 text-white rounded-xl transition-all duration-300 hover:shadow-md"
                             >
-                              <Plus className="w-4 h-4 mr-2" />
+                              <Plus className="h-4 w-4" />
                               Add Education
                             </Button>
                           </TabsContent>
@@ -781,7 +750,7 @@ export default function ResumeBuilder() {
                             {formData.skills.map((skill, index) => (
                               <motion.div
                                 key={index}
-                                className="mb-3 sm:mb-4 relative"
+                                className="mb-4 sm:mb-6 relative"
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 * index }}
@@ -790,13 +759,13 @@ export default function ResumeBuilder() {
                                   value={skill}
                                   onChange={(e) => handleInputChange('skills', index, null, e.target.value)}
                                   placeholder="Enter a skill"
-                                  className={cn("w-full pr-10 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", removeFocusBorder)}
+                                  className={cn("w-full pr-10 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
                                 />
                                 <Button
                                   type="button"
                                   variant="ghost"
                                   size="icon"
-                                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-red-500 transition-colors duration-200"
+                                  className="absolute top-1/2 right-2 transform -translate-y-1/2 text-gray-500 hover:text-red-500 transition-colors duration-200"
                                   onClick={() => removeListItem('skills', index)}
                                 >
                                   <Trash2 className="h-4 w-4" />
@@ -807,9 +776,9 @@ export default function ResumeBuilder() {
                             <Button
                               type="button"
                               onClick={() => addListItem('skills')}
-                              className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-2 px-4 rounded-xl transition-all duration-300 hover:shadow-md"
+                              className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-primary hover:bg-primary/90 text-white rounded-xl transition-all duration-300 hover:shadow-md"
                             >
-                              <Plus className="w-4 h-4 mr-2" />
+                              <Plus className="h-4 w-4" />
                               Add Skill
                             </Button>
                           </TabsContent>
@@ -840,7 +809,7 @@ export default function ResumeBuilder() {
                                       value={project.name}
                                       onChange={(e) => handleInputChange('projects', index, 'name', e.target.value)}
                                       placeholder="Enter project name"
-                                      className={cn("w-full rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", removeFocusBorder)}
+                                      className={cn("w-full rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
                                     />
                                   </div>
                                   <div>
@@ -850,24 +819,24 @@ export default function ResumeBuilder() {
                                       value={project.description}
                                       onChange={(e) => handleInputChange('projects', index, 'description', e.target.value)}
                                       placeholder="Describe your project"
-                                      className={cn("w-full h-24 sm:h-32 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", removeFocusBorder)}
+                                      className={cn("w-full h-24 sm:h-32 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
                                     />
                                   </div>
                                   <div>
                                     <Label className="text-sm font-medium text-gray-700 mb-1 block">Project Links</Label>
                                     {project.links.map((link, linkIndex) => (
-                                      <div key={linkIndex} className="flex items-center space-x-2 mb-2">
+                                      <div key={linkIndex} className="flex gap-2 mb-2">
                                         <Input
                                           value={link.name}
                                           onChange={(e) => handleInputChange('projects', index, 'links', e.target.value, linkIndex, 'name')}
                                           placeholder="Link name"
-                                          className={cn("flex-1 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", removeFocusBorder)}
+                                          className={cn("w-1/3 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
                                         />
                                         <Input
                                           value={link.url}
                                           onChange={(e) => handleInputChange('projects', index, 'links', e.target.value, linkIndex, 'url')}
-                                          placeholder="URL"
-                                          className={cn("flex-1 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", removeFocusBorder)}
+                                          placeholder="Link URL"
+                                          className={cn("w-2/3 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
                                         />
                                         <Button
                                           type="button"
@@ -884,9 +853,9 @@ export default function ResumeBuilder() {
                                     <Button
                                       type="button"
                                       onClick={() => addProjectLink(index)}
-                                      className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-2 px-4 rounded-xl transition-all duration-300 hover:shadow-md mt-2"
+                                      className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl transition-all duration-300 hover:shadow-md mt-2"
                                     >
-                                      <Plus className="w-4 h-4 mr-2" />
+                                      <Plus className="h-4 w-4" />
                                       Add Link
                                     </Button>
                                   </div>
@@ -896,9 +865,9 @@ export default function ResumeBuilder() {
                             <Button
                               type="button"
                               onClick={() => addListItem('projects')}
-                              className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-2 px-4 rounded-xl transition-all duration-300 hover:shadow-md"
+                              className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-primary hover:bg-primary/90 text-white rounded-xl transition-all duration-300 hover:shadow-md"
                             >
-                              <Plus className="w-4 h-4 mr-2" />
+                              <Plus className="h-4 w-4" />
                               Add Project
                             </Button>
                           </TabsContent>
@@ -922,50 +891,29 @@ export default function ResumeBuilder() {
                                   <span className="sr-only">Remove certification</span>
                                 </Button>
                                 <div className="space-y-3 sm:space-y-4">
-                                  {['name', 'issuer'].map((field) => (
+                                  {['name', 'issuer', 'startDate', 'endDate'].map((field) => (
                                     <div key={field}>
                                       <Label htmlFor={`certification-${index}-${field}`} className="text-sm font-medium text-gray-700 mb-1 block">
-                                        {field === 'name' ? 'Certification Name' : 'Issuing Organization'}
+                                        {field === 'startDate' ? 'Start Date' : field === 'endDate' ? 'End Date' : field.charAt(0).toUpperCase() + field.slice(1)}
                                       </Label>
                                       <Input
                                         id={`certification-${index}-${field}`}
-                                        value={cert[field]}
+                                        value={cert[field as keyof Certification] as string}
                                         onChange={(e) => handleInputChange('certifications', index, field, e.target.value)}
-                                        placeholder={`Enter ${field === 'name' ? 'certification name' : 'issuing organization'}`}
-                                        className={cn("w-full rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", removeFocusBorder)}
+                                        placeholder={`Enter ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`}
+                                        type={field.includes('Date') ? 'date' : 'text'}
+                                        className={cn("w-full rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
                                       />
                                     </div>
                                   ))}
-                                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                                    <div className="flex-1">
-                                      <Label htmlFor={`certification-${index}-startDate`} className="text-sm font-medium text-gray-700 mb-1 block">Issue Date</Label>
-                                      <Input
-                                        id={`certification-${index}-startDate`}
-                                        type="date"
-                                        value={cert.startDate}
-                                        onChange={(e) => handleInputChange('certifications', index, 'startDate', e.target.value)}
-                                        className={cn("w-full rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", removeFocusBorder)}
-                                      />
-                                    </div>
-                                    <div className="flex-1">
-                                      <Label htmlFor={`certification-${index}-endDate`} className="text-sm font-medium text-gray-700 mb-1 block">Expiry Date (if applicable)</Label>
-                                      <Input
-                                        id={`certification-${index}-endDate`}
-                                        type="date"
-                                        value={cert.endDate}
-                                        onChange={(e) => handleInputChange('certifications', index, 'endDate', e.target.value)}
-                                        className={cn("w-full rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", removeFocusBorder)}
-                                      />
-                                    </div>
-                                  </div>
                                   <div>
                                     <Label htmlFor={`certification-${index}-description`} className="text-sm font-medium text-gray-700 mb-1 block">Description</Label>
                                     <Textarea
                                       id={`certification-${index}-description`}
                                       value={cert.description}
                                       onChange={(e) => handleInputChange('certifications', index, 'description', e.target.value)}
-                                      placeholder="Describe the certification and its relevance"
-                                      className={cn("w-full h-24 sm:h-32 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", removeFocusBorder)}
+                                      placeholder="Describe your certification"
+                                      className={cn("w-full h-24 sm:h-32 rounded-xl transition-all duration-300 hover:shadow-md focus:shadow-lg bg-white border-gray-300 text-gray-900 placeholder-gray-500", "remove-focus-border")}
                                     />
                                   </div>
                                 </div>
@@ -974,9 +922,9 @@ export default function ResumeBuilder() {
                             <Button
                               type="button"
                               onClick={() => addListItem('certifications')}
-                              className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-2 px-4 rounded-xl transition-all duration-300 hover:shadow-md"
+                              className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-primary hover:bg-primary/90 text-white rounded-xl transition-all duration-300 hover:shadow-md"
                             >
-                              <Plus className="w-4 h-4 mr-2" />
+                              <Plus className="h-4 w-4" />
                               Add Certification
                             </Button>
                           </TabsContent>
@@ -995,7 +943,7 @@ export default function ResumeBuilder() {
             >
               <Card className="shadow-xl rounded-3xl overflow-hidden bg-white border border-gray-200">
                 <CardContent className="p-4 sm:p-6">
-                  <div className="bg-white p-4 sm:p-6 rounded-xl border border-gray-200 shadow-inner overflow-y-auto" style={{ height: "calc(100vh - 250px)", maxHeight: "1000px", aspectRatio: "1 / 1.414" }}>
+                  <div className="bg-white p-4 sm:p-6 rounded-xl border border-gray-200 shadow-inner overflow-y-auto hide-scrollbar" style={{ height: "calc(100vh - 250px)", maxHeight: "1000px", aspectRatio: "1 / 1.414" }}>
                     {renderPreview()}
                   </div>
                   <div className="mt-4 sm:mt-6">
@@ -1040,60 +988,60 @@ export default function ResumeBuilder() {
         </div>
       </main>
       <footer className="bg-gray-100 py-8 mt-12">
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-      <div>
-        <h3 className="text-lg font-semibold mb-4">About</h3>
-        <p className="text-sm text-gray-600">
-        My ResuMate is a simple resume builder to help you create professional resumes quickly and easily.
-        </p>
-      </div>
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Technologies</h3>
-        <div className="flex flex-wrap gap-2">
-          {['React', 'Next.js', 'TypeScript', 'Tailwind CSS', 'Framer Motion'].map((tech) => (
-            <div key={tech} className="relative group">
-              <span className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm inline-block transition-transform duration-300 ease-in-out group-hover:-translate-y-1">
-                {tech}
-              </span>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div>
+              <h3 className="text-lg font-semibold mb-4">About</h3>
+              <p className="text-sm text-gray-600">
+                My ResuMate is a simple resume builder to help you create professional resumes quickly and easily.
+              </p>
             </div>
-          ))}
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Technologies</h3>
+              <div className="flex flex-wrap gap-2">
+                {['React', 'Next.js', 'TypeScript', 'Tailwind CSS', 'Framer Motion'].map((tech) => (
+                  <div key={tech} className="relative group">
+                    <span className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm inline-block transition-transform duration-300 ease-in-out group-hover:-translate-y-1">
+                      {tech}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Connect With Me</h3>
+              <div className="flex space-x-4">
+                <a href="https://www.facebook.com/Androxus30?mibextid=ZbWKwL" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary transition-colors">
+                  <Facebook className="h-6 w-6" />
+                  <span className="sr-only">Facebook</span>
+                </a>
+                <a href="https://github.com/janchrz/" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary transition-colors">
+                  <Github className="h-6 w-6" />
+                  <span className="sr-only">GitHub</span>
+                </a>
+                <a href="https://www.linkedin.com/in/john-christoper-dalisay-01aa76304/" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary transition-colors">
+                  <Linkedin className="h-6 w-6" />
+                  <span className="sr-only">LinkedIn</span>
+                </a>
+                <a href="https://www.instagram.com/jan_christoperr/?igsh=MWZzNTZvbXZ0ZjBkcw%3D%3D#" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary transition-colors">
+                  <Instagram className="h-6 w-6" />
+                  <span className="sr-only">Instagram</span>
+                </a>
+              </div>
+            </div>
+          </div>
+          <div className="mt-8 pt-8 border-t border-gray-200">
+            <p className="text-center text-sm text-gray-500">
+              © {new Date().getFullYear()} My ResuMate. All rights reserved. | 
+              <a href="#" className="text-primary hover:underline ml-1">Privacy Policy</a> | 
+              <a href="#" className="text-primary hover:underline ml-1">Terms of Service</a>
+            </p>
+            <p className="text-center text-sm text-gray-500 mt-2">
+              Developed by: <a href="https://jcd-portfolio.vercel.app" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">JCD</a>
+            </p>
+          </div>
         </div>
-      </div>
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Connect With Us</h3>
-        <div className="flex space-x-4">
-    <a href="https://www.facebook.com/Androxus30?mibextid=ZbWKwL" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary transition-colors">
-      <Facebook className="h-6 w-6" />
-      <span className="sr-only">Facebook</span>
-    </a>
-    <a href="https://github.com/janchrz/" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary transition-colors">
-      <Github className="h-6 w-6" />
-      <span className="sr-only">GitHub</span>
-    </a>
-    <a href="https://www.linkedin.com/in/john-christoper-dalisay-01aa76304/" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary transition-colors">
-      <Linkedin className="h-6 w-6" />
-      <span className="sr-only">LinkedIn</span>
-    </a>
-    <a href="https://www.instagram.com/jan_christoperr/?igsh=MWZzNTZvbXZ0ZjBkcw%3D%3D#" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-primary transition-colors">
-      <Instagram className="h-6 w-6" />
-      <span className="sr-only">Instagram</span>
-    </a>
-  </div>
-</div>
-    </div>
-    <div className="mt-8 pt-8 border-t border-gray-200">
-      <p className="text-center text-sm text-gray-500">
-        © {new Date().getFullYear()} My ResuMate. All rights reserved. | 
-        <a href="#" className="text-primary hover:underline ml-1">Privacy Policy</a> | 
-        <a href="#" className="text-primary hover:underline ml-1">Terms of Service</a>
-      </p>
-      <p className="text-center text-sm text-gray-500 mt-2">
-        Developed by: <a href="https://your-portfolio-url.com" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">JCD</a>
-      </p>
-    </div>
-  </div>
-</footer>
+      </footer>
     </div>
   )
 }
